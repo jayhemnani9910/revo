@@ -430,6 +430,8 @@ pub fn init(alloc: std.mem.Allocator) !@This() {
 }
 
 pub fn deinit(self: *@This()) void {
+    // a scheduler created later at this address must not see this one's fiber
+    if (tl_sched == self) tl_sched = null;
     for (self.fibers.items) |box| {
         box.deinit(self.alloc);
     }

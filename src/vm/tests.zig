@@ -95,6 +95,20 @@ test "vm spawn passes n args to child and join returns result" {
     try testing.expectEqual(@as(f64, 5), out.asNumOpt().?);
 }
 
+test "vm reinitialized in place starts on its main fiber" {
+    var vm = try VM.init(vt_runtime());
+    const other = try VM.Fiber.init(vm.runtime.alloc, 1, &.{}, 16);
+    _ = try vm.sched.appendFiber(other);
+    vm.sched.setCurrent(1);
+    vm.deinit();
+
+    // same address, so a stale thread-local current fiber would match it
+    vm = try VM.init(vt_runtime());
+    defer vm.deinit();
+    try testing.expectEqual(@as(VM.FiberID, 0), vm.sched.currentID());
+    _ = vm.currentFiber();
+}
+
 test "vm channel handoff wakes blocked receiver" {
     var vm = try VM.init(vt_runtime());
     defer vm.deinit();
