@@ -22,19 +22,22 @@ pub const Impl = struct {
 
     pub fn sub(vm: *VM, self: Args.string, start: Args.number, length: Args.number) !HostResult {
         const str = vm.stringValue(@backingInt(self));
-        const s = @as(i64, @intFromFloat(start));
-        const l = @as(i64, @intFromFloat(length));
-        if (s < 0 or l < 0 or s >= str.len) {
+        // compare as floats first: @intFromFloat traps outside the integer range
+        const s = @trunc(start);
+        const l = @trunc(length);
+        if (std.math.isNan(s) or std.math.isNan(l) or s < 0 or l < 0 or s >= @as(f64, @floatFromInt(str.len))) {
             return .data(try vm.ownValueString(""));
         }
-        const end = @min(@as(usize, @intCast(s + l)), str.len);
-        const s_u: usize = @intCast(s);
+        const s_u: usize = @intFromFloat(s);
+        const rest = str.len - s_u;
+        const end = if (l >= @as(f64, @floatFromInt(rest))) str.len else s_u + @as(usize, @intFromFloat(l));
         return .data(try vm.ownValueStringNoDedup(str[s_u..end]));
     }
 
     pub fn replace(vm: *VM, self: Args.string, old: Args.string, new: Args.string) !HostResult {
         const str = vm.stringValue(@backingInt(self));
         const o = vm.stringValue(@backingInt(old));
+        if (o.len == 0) return .errType(1, "non-empty string", "empty string");
         const n = vm.stringValue(@backingInt(new));
         const res = try std.mem.replaceOwned(u8, vm.runtime.alloc, str, o, n);
         return .data(try vm.adoptValueStringNoDedup(res));
@@ -43,6 +46,7 @@ pub const Impl = struct {
     pub fn split(vm: *VM, self: Args.string, delim: Args.string) !HostResult {
         const str = vm.stringValue(@backingInt(self));
         const d = vm.stringValue(@backingInt(delim));
+        if (d.len == 0) return .errType(1, "non-empty string", "empty string");
         var parts = try std.ArrayList(Value).initCapacity(vm.runtime.alloc, 10);
         defer parts.deinit(vm.runtime.alloc);
 

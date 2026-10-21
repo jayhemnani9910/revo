@@ -206,3 +206,30 @@ test "unwrap rejects non-results at runtime" {
 //
 // quasiquote `template` with %splice
 //
+
+test "split and replace reject an empty separator" {
+    try t.expectRuntimeError(
+        \\ "abc":split("")
+    , .TypeError);
+    try t.expectRuntimeError(
+        \\ "abc":replace("", "x")
+    , .TypeError);
+}
+
+test "sub clamps start and length outside the integer range" {
+    try t.topString(
+        \\ "abc":sub(0, 1e300)
+    , "abc");
+    try t.topString(
+        \\ "abc":sub(2, 1e19)
+    , "c");
+    try t.topString(
+        \\ "abc":sub(1e300, 1)
+    , "");
+    try t.topString(
+        \\ "abc":sub(-1e300, 1)
+    , "");
+    try t.topString(
+        \\ "abc":sub(1.9, 1)
+    , "b");
+}
